@@ -45,27 +45,33 @@ struct GameControlBar: View {
     let onExit: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onTogglePause) {
-                Label(isPaused ? "Start" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(GameActionButtonStyle(fill: .white.opacity(0.2)))
+        VStack(spacing: 10) {
+            Text(isPaused ? "Spiel pausiert" : "Tippen oder mit der Pfote über den Bildschirm wischen")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.82))
 
-            Button(action: onExit) {
-                Label("Zurück", systemImage: "house.fill")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .frame(maxWidth: .infinity)
+            HStack(spacing: 12) {
+                Button(action: onTogglePause) {
+                    Label(isPaused ? "Start" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(GameActionButtonStyle(fill: .white.opacity(0.24)))
+
+                Button(action: onExit) {
+                    Label("Beenden", systemImage: "xmark")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(GameActionButtonStyle(fill: .black.opacity(0.42)))
             }
-            .buttonStyle(GameActionButtonStyle(fill: .black.opacity(0.38)))
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
-        .padding(.bottom, 44)
+        .padding(.bottom, 26)
         .background(
             LinearGradient(
-                colors: [.clear, .black.opacity(0.24), .black.opacity(0.42)],
+                colors: [.clear, .black.opacity(0.2), .black.opacity(0.5)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -80,13 +86,13 @@ struct GameActionButtonStyle: ButtonStyle {
         configuration.label
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
-            .padding(.vertical, 14)
+            .padding(.vertical, 16)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(fill.opacity(configuration.isPressed ? 0.72 : 1.0))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(.white.opacity(0.22), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(.white.opacity(0.24), lineWidth: 1)
                     }
             )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)

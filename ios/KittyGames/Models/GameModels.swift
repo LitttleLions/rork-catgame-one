@@ -14,6 +14,15 @@ nonisolated struct GameInfo: Identifiable, Sendable {
     let emoji: String
     let gradientColors: [Color]
     let imageURL: String?
+
+    var badgeTitle: String {
+        switch id {
+        case .fishing: "Wasser"
+        case .tick: "Wiese"
+        case .mouse: "Jagd"
+        case .ladybug: "Garten"
+        }
+    }
 }
 
 let allGames: [GameInfo] = [

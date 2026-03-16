@@ -56,7 +56,9 @@ struct HomeView: View {
                 }
             }
         }
-        .onAppear { appeared = true }
+        .task {
+            appeared = true
+        }
     }
 }
 
@@ -67,7 +69,7 @@ struct GameCardView: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Color.black
-                .frame(height: 190)
+                .frame(height: 206)
                 .overlay {
                     LinearGradient(
                         colors: game.gradientColors,
@@ -80,46 +82,103 @@ struct GameCardView: View {
                     PatternOverlay(type: game.id)
                         .allowsHitTesting(false)
                 }
-                .clipShape(.rect(cornerRadius: 22))
+                .overlay(alignment: .topTrailing) {
+                    GamePreviewArtView(type: game.id, isAnimating: hovered)
+                        .padding(.top, 18)
+                        .padding(.trailing, 18)
+                        .allowsHitTesting(false)
+                }
+                .clipShape(.rect(cornerRadius: 24))
 
             LinearGradient(
-                colors: [.clear, .black.opacity(0.75)],
-                startPoint: .center,
+                colors: [.clear, .black.opacity(0.1), .black.opacity(0.78)],
+                startPoint: .top,
                 endPoint: .bottom
             )
-            .clipShape(.rect(cornerRadius: 22))
+            .clipShape(.rect(cornerRadius: 24))
             .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Text(game.title)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                    Text(game.badgeTitle)
+                        .font(.caption.bold())
                         .foregroundStyle(.white)
-                    Image(systemName: "chevron.right.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.white.opacity(0.18), in: .capsule)
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "play.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.white.opacity(0.86))
                 }
-                Text(game.subtitle)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.65))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(game.title)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text(game.subtitle)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .lineLimit(2)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 18)
             .allowsHitTesting(false)
-
-            Text(game.emoji)
-                .font(.system(size: 54))
-                .shadow(color: .black.opacity(0.3), radius: 6)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, 28)
-                .padding(.bottom, 36)
-                .offset(y: hovered ? -6 : 0)
-                .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: hovered)
-                .allowsHitTesting(false)
         }
-        .frame(height: 190)
-        .shadow(color: game.gradientColors[0].opacity(0.45), radius: 16, y: 8)
+        .frame(height: 206)
+        .shadow(color: game.gradientColors[0].opacity(0.42), radius: 18, y: 10)
         .onAppear { hovered = true }
+    }
+}
+
+struct GamePreviewArtView: View {
+    let type: GameType
+    let isAnimating: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.white.opacity(0.12))
+                .frame(width: 106, height: 106)
+
+            switch type {
+            case .fishing:
+                ZStack {
+                    FishShapeView(colorVariant: 0, size: 72, facingLeft: false, catchProgress: 0)
+                        .rotationEffect(.degrees(-12))
+                        .offset(x: -10, y: 10)
+                    Circle()
+                        .stroke(.white.opacity(0.18), lineWidth: 2)
+                        .frame(width: 18, height: 18)
+                        .offset(x: 26, y: -18)
+                    Circle()
+                        .stroke(.white.opacity(0.18), lineWidth: 2)
+                        .frame(width: 10, height: 10)
+                        .offset(x: 36, y: -34)
+                }
+            case .tick:
+                ZStack {
+                    TickView(size: 62, catchProgress: 0)
+                        .rotationEffect(.degrees(isAnimating ? 10 : -10))
+                    Capsule()
+                        .fill(.white.opacity(0.2))
+                        .frame(width: 54, height: 6)
+                        .offset(y: 32)
+                }
+            case .mouse:
+                MouseView(size: 78, angle: isAnimating ? 0.35 : -0.2, catchProgress: 0)
+                        .offset(x: -4, y: 8)
+            case .ladybug:
+                LadybugView(size: 76, wingOpen: isAnimating ? 0.95 : 0.35, catchProgress: 0)
+                    .offset(y: 6)
+            }
+        }
+        .frame(width: 116, height: 116)
+        .scaleEffect(isAnimating ? 1.03 : 0.97)
+        .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: isAnimating)
     }
 }
 

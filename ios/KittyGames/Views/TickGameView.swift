@@ -117,10 +117,8 @@ struct TickGameView: View {
                 GrassBackground()
                     .ignoresSafeArea()
 
-                TimelineView(.animation) { context in
-                    let liveTime = context.date.timeIntervalSinceReferenceDate
-                    let time = isPaused ? pausedTime : liveTime
-                    let _ = vm.update(at: time)
+                TimelineView(.animation) { _ in
+                    let time = isPaused ? pausedTime : vm.currentTime
                     ZStack {
                         ForEach(vm.ticks) { t in
                             let pos = vm.position(for: t, at: time)
@@ -140,15 +138,9 @@ struct TickGameView: View {
 
                 Color.clear
                     .contentShape(Rectangle())
-                    .ignoresSafeArea()
-                    .simultaneousGesture(
-                        SpatialTapGesture()
-                            .onEnded { value in
-                                guard !isPaused else { return }
-                                vm.handleTap(at: value.location)
-                            }
-                    )
-                    .simultaneousGesture(
+                    .padding(.top, 132)
+                    .padding(.bottom, 128)
+                    .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
                                 guard !isPaused else { return }
@@ -177,6 +169,7 @@ struct TickGameView: View {
                                     vm.shiftTimeline(by: now - pauseStartedAt)
                                 }
                                 pauseStartedAt = nil
+                                vm.update(at: now)
                                 isPaused = false
                             } else {
                                 pausedTime = vm.currentTime
@@ -191,6 +184,15 @@ struct TickGameView: View {
             }
             .onAppear {
                 vm.setup(size: geo.size)
+                vm.update(at: Date.timeIntervalSinceReferenceDate)
+            }
+            .task(id: isPaused) {
+                while !Task.isCancelled {
+                    if !isPaused {
+                        vm.update(at: Date.timeIntervalSinceReferenceDate)
+                    }
+                    try? await Task.sleep(for: .milliseconds(16))
+                }
             }
         }
         .ignoresSafeArea()
