@@ -26,12 +26,12 @@ class FishingViewModel {
     func setup(size: CGSize) {
         screenSize = size
         startTime = Date.timeIntervalSinceReferenceDate
-        fish = (0..<7).map { i in
+        fish = (0..<6).map { i in
             let goRight = i % 2 == 0
             return FishBlueprint(
                 speed: goRight ? Double.random(in: 70...140) : -Double.random(in: 70...140),
                 size: CGFloat.random(in: 65...95),
-                baselineRatio: 0.18 + Double(i) * 0.12,
+                baselineRatio: 0.22 + Double(i) * 0.09,
                 waveFreq: Double.random(in: 0.7...1.8),
                 waveAmplitude: Double.random(in: 22...55),
                 phase: Double(i) * .pi / 3.0,
@@ -125,6 +125,9 @@ struct FishingGameView: View {
                     ZStack {
                         ForEach(vm.fish) { f in
                             let pos = vm.position(for: f, at: time)
+                            let swimPhase = sin((time - vm.startTime) * 8 + f.phase)
+                            let verticalVelocity = cos((time - vm.startTime) * f.waveFreq + f.phase)
+                            let headingTilt = atan2(verticalVelocity * f.waveAmplitude * f.waveFreq, abs(f.speed)) * 0.35
                             let caught = vm.caughtIDs.contains(f.id)
                             let catchTime = vm.catchTimes[f.id] ?? time
                             let progress = caught ? min((time - catchTime) / 0.5, 1.0) : 0
@@ -132,7 +135,9 @@ struct FishingGameView: View {
                                 colorVariant: f.colorVariant,
                                 size: f.size,
                                 facingLeft: f.speed < 0,
-                                catchProgress: progress
+                                catchProgress: progress,
+                                swimPhase: swimPhase,
+                                headingTilt: headingTilt
                             )
                             .position(pos)
                         }
@@ -193,11 +198,18 @@ struct FishingGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("underwater_loop", volume: 0.22)
             }
+            .onDisappear { GameAudioManager.shared.stopLoop("underwater_loop") }
             .task(id: isPaused) {
                 while !Task.isCancelled {
                     if !isPaused {
                         vm.update(at: Date.timeIntervalSinceReferenceDate)
+                        GameAudioManager.shared.playThrottled(
+                            "bubble_pop",
+                            volume: 0.28,
+                            minInterval: 1.6
+                        )
                     }
                     try? await Task.sleep(for: .milliseconds(16))
                 }
@@ -244,6 +256,8 @@ struct FishShapeView: View {
     let size: CGFloat
     let facingLeft: Bool
     let catchProgress: Double
+    let swimPhase: Double
+    let headingTilt: Double
 
     private var bodyColor: Color {
         let colors: [Color] = [
@@ -266,7 +280,8 @@ struct FishShapeView: View {
             FishTailShape()
                 .fill(bodyColor.opacity(0.8))
                 .frame(width: size * 0.5, height: size * 0.45)
-                .offset(x: size * 0.28)
+                .offset(x: size * 0.28, y: CGFloat(swimPhase) * size * 0.03)
+                .rotationEffect(.degrees(swimPhase * 22), anchor: .leading)
 
             Ellipse()
                 .fill(
@@ -281,7 +296,7 @@ struct FishShapeView: View {
             FishTopFin()
                 .fill(bodyColor.opacity(0.75))
                 .frame(width: size * 0.28, height: size * 0.2)
-                .offset(x: -size * 0.06, y: -size * 0.27)
+                .offset(x: -size * 0.06, y: -size * 0.27 + CGFloat(swimPhase) * size * 0.015)
 
             Path { path in
                 path.move(to: CGPoint(x: -size * 0.05, y: -size * 0.06))
@@ -324,6 +339,7 @@ struct FishShapeView: View {
         }
         .frame(width: size, height: size)
         .scaleEffect(x: facingLeft ? -1 : 1, y: 1)
+        .rotationEffect(.radians(headingTilt))
         .scaleEffect(1.0 + catchProgress * 0.6)
         .opacity(1.0 - catchProgress)
         .rotationEffect(.degrees(catchProgress * 360))

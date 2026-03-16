@@ -132,10 +132,16 @@ struct MouseGameView: View {
                         ForEach(vm.mice) { m in
                             let pos = vm.position(for: m, at: time)
                             let angle = vm.velocityAngle(for: m, at: time)
+                            let scurryPhase = sin((time - vm.startTime) * 10 + m.phaseX)
                             let caught = vm.caughtIDs.contains(m.id)
                             let catchTime = vm.catchTimes[m.id] ?? time
                             let progress = caught ? min((time - catchTime) / 0.5, 1.0) : 0
-                            MouseView(size: m.size, angle: angle, catchProgress: progress)
+                            MouseView(
+                                size: m.size,
+                                angle: angle,
+                                catchProgress: progress,
+                                scurryPhase: scurryPhase
+                            )
                                 .position(pos)
                         }
                         ForEach(vm.catchEffects, id: \.id) { effect in
@@ -195,11 +201,14 @@ struct MouseGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("mouse_loop", volume: 0.13)
             }
+            .onDisappear { GameAudioManager.shared.stopLoop("mouse_loop") }
             .task(id: isPaused) {
                 while !Task.isCancelled {
                     if !isPaused {
                         vm.update(at: Date.timeIntervalSinceReferenceDate)
+                        GameAudioManager.shared.playThrottled("mouse_squeak", volume: 0.36, minInterval: 1.3)
                     }
                     try? await Task.sleep(for: .milliseconds(16))
                 }
@@ -213,6 +222,7 @@ struct MouseView: View {
     let size: CGFloat
     let angle: Double
     let catchProgress: Double
+    let scurryPhase: Double
 
     var body: some View {
         ZStack {
@@ -249,19 +259,25 @@ struct MouseView: View {
             Circle()
                 .fill(.black)
                 .frame(width: size * 0.07)
-                .offset(x: -size * 0.32, y: -size * 0.02)
+                .offset(x: -size * 0.32, y: -size * 0.02 + CGFloat(scurryPhase) * size * 0.02)
+
+            Circle()
+                .fill(.black)
+                .frame(width: size * 0.05)
+                .offset(x: -size * 0.18, y: -size * 0.08 + CGFloat(-scurryPhase) * size * 0.018)
 
             Path { path in
                 path.move(to: CGPoint(x: size * 0.3, y: size * 0.06))
                 path.addQuadCurve(
                     to: CGPoint(x: size * 0.6, y: size * 0.0),
-                    control: CGPoint(x: size * 0.45, y: size * 0.18)
+                    control: CGPoint(x: size * 0.45, y: size * (0.18 + 0.05 * scurryPhase))
                 )
             }
             .stroke(Color(hue: 0.95, saturation: 0.35, brightness: 0.85), lineWidth: 2.5)
         }
         .frame(width: size, height: size)
         .rotationEffect(.radians(angle))
+        .offset(y: CGFloat(scurryPhase) * size * 0.015)
         .scaleEffect(1.0 + catchProgress * 0.5)
         .opacity(1.0 - catchProgress)
         .rotationEffect(.degrees(catchProgress * 270))
