@@ -122,10 +122,20 @@ struct TickGameView: View {
                     ZStack {
                         ForEach(vm.ticks) { t in
                             let pos = vm.position(for: t, at: time)
+                            let crawlPhase = sin((time - vm.startTime) * 11 + t.phaseX)
+                            let heading = atan2(
+                                cos((time - vm.startTime) * t.freqY + t.phaseY) * t.freqY,
+                                cos((time - vm.startTime) * t.freqX + t.phaseX) * t.freqX
+                            )
                             let caught = vm.caughtIDs.contains(t.id)
                             let catchTime = vm.catchTimes[t.id] ?? time
                             let progress = caught ? min((time - catchTime) / 0.5, 1.0) : 0
-                            TickView(size: t.size, catchProgress: progress)
+                            TickView(
+                                size: t.size,
+                                catchProgress: progress,
+                                crawlPhase: crawlPhase,
+                                heading: heading
+                            )
                                 .position(pos)
                         }
                         ForEach(vm.catchEffects, id: \.id) { effect in
@@ -185,11 +195,14 @@ struct TickGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("tick_loop", volume: 0.14)
             }
+            .onDisappear { GameAudioManager.shared.stopLoop("tick_loop") }
             .task(id: isPaused) {
                 while !Task.isCancelled {
                     if !isPaused {
                         vm.update(at: Date.timeIntervalSinceReferenceDate)
+                        GameAudioManager.shared.playThrottled("tick_step", volume: 0.33, minInterval: 0.5)
                     }
                     try? await Task.sleep(for: .milliseconds(16))
                 }
@@ -202,6 +215,8 @@ struct TickGameView: View {
 struct TickView: View {
     let size: CGFloat
     let catchProgress: Double
+    let crawlPhase: Double
+    let heading: Double
 
     var body: some View {
         ZStack {
@@ -211,11 +226,14 @@ struct TickView: View {
 
             ForEach(0..<8, id: \.self) { i in
                 let angle = Double(i) * .pi / 4.0
+                let sideSign = i < 4 ? 1.0 : -1.0
+                let phaseShift = i.isMultiple(of: 2) ? 1.0 : -1.0
                 Capsule()
                     .fill(Color(hue: 0.07, saturation: 0.7, brightness: 0.2))
                     .frame(width: size * 0.28, height: size * 0.07)
                     .offset(x: size * 0.32)
                     .rotationEffect(.degrees(angle * 180 / .pi))
+                    .rotationEffect(.degrees(crawlPhase * sideSign * phaseShift * 20), anchor: .leading)
                     .offset(x: size * 0.05 * cos(angle), y: size * 0.05 * sin(angle))
             }
 
@@ -225,6 +243,8 @@ struct TickView: View {
                 .offset(x: -size * 0.06, y: -size * 0.08)
         }
         .frame(width: size, height: size)
+        .rotationEffect(.radians(heading))
+        .offset(y: CGFloat(crawlPhase) * size * 0.03)
         .scaleEffect(1.0 + catchProgress * 0.8)
         .opacity(1.0 - catchProgress)
         .rotationEffect(.degrees(catchProgress * 180))
