@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "Kitty Games",
+      "path": "ios",
+      "framework": "swift"
+    }
+  ]
+}
