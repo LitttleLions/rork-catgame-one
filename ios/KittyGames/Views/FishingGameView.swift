@@ -26,7 +26,7 @@ class FishingViewModel {
     func setup(size: CGSize) {
         screenSize = size
         startTime = Date.timeIntervalSinceReferenceDate
-        fish = (0..<7).map { i in
+        fish = (0..<6).map { i in
             let goRight = i % 2 == 0
             return FishBlueprint(
                 speed: goRight ? Double.random(in: 70...140) : -Double.random(in: 70...140),
@@ -102,6 +102,7 @@ class FishingViewModel {
         if let id = bestID {
             let pos = position(for: fish.first(where: { $0.id == id })!, at: time)
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            GameAudioManager.shared.playCatchSound("bubble_pop")
             catchFish(id, position: pos, at: time)
         }
     }
@@ -193,6 +194,10 @@ struct FishingGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("underwater_loop")
+            }
+            .onDisappear {
+                GameAudioManager.shared.stopLoop("underwater_loop")
             }
             .task(id: isPaused) {
                 while !Task.isCancelled {

@@ -28,7 +28,7 @@ class LadybugViewModel {
     func setup(size: CGSize) {
         screenSize = size
         startTime = Date.timeIntervalSinceReferenceDate
-        bugs = (0..<6).map { i in
+        bugs = (0..<5).map { i in
             LadybugBlueprint(
                 size: CGFloat.random(in: 62...85),
                 orbitRadiusX: Double.random(in: 80...160),
@@ -102,6 +102,7 @@ class LadybugViewModel {
         if let id = bestID, let b = bugs.first(where: { $0.id == id }) {
             let pos = position(for: b, at: time)
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            GameAudioManager.shared.playCatchSound("ladybug_catch")
             catchBug(id, position: pos, at: time)
         }
     }
@@ -189,6 +190,10 @@ struct LadybugGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("garden_loop")
+            }
+            .onDisappear {
+                GameAudioManager.shared.stopLoop("garden_loop")
             }
             .task(id: isPaused) {
                 while !Task.isCancelled {

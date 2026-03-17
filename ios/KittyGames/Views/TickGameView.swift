@@ -12,6 +12,9 @@ nonisolated struct TickBlueprint: Identifiable, Sendable {
     let phaseY: Double
     let freqX: Double
     let freqY: Double
+    let freqX2: Double
+    let freqY2: Double
+    let ampRatio2: Double
 }
 
 @Observable
@@ -28,29 +31,36 @@ class TickViewModel {
     func setup(size: CGSize) {
         screenSize = size
         startTime = Date.timeIntervalSinceReferenceDate
-        ticks = (0..<5).map { i in
+        ticks = (0..<3).map { i in
             TickBlueprint(
                 size: CGFloat.random(in: 38...52),
                 speed: Double.random(in: 90...170),
                 directionChangeInterval: Double.random(in: 0.8...2.0),
                 initialAngle: Double(i) * 2.1,
-                startX: Double.random(in: 0.2...0.8) * size.width,
-                startY: Double.random(in: 0.2...0.8) * size.height,
+                startX: size.width * 0.5,
+                startY: size.height * 0.5,
                 phaseX: Double(i) * 1.3,
                 phaseY: Double(i) * 2.1,
-                freqX: Double.random(in: 0.4...0.9),
-                freqY: Double.random(in: 0.5...1.1)
+                freqX: Double.random(in: 0.3...0.6),
+                freqY: Double.random(in: 0.4...0.8),
+                freqX2: Double.random(in: 0.7...1.4),
+                freqY2: Double.random(in: 0.9...1.6),
+                ampRatio2: Double.random(in: 0.2...0.45)
             )
         }
     }
 
     func position(for t: TickBlueprint, at time: TimeInterval) -> CGPoint {
         let elapsed = time - startTime
-        let margin = 40.0
-        let rangeX = screenSize.width - 2 * margin
-        let rangeY = screenSize.height - 2 * margin
-        let rawX = t.startX + sin(elapsed * t.freqX + t.phaseX) * rangeX * 0.45
-        let rawY = t.startY + sin(elapsed * t.freqY + t.phaseY) * rangeY * 0.45
+        let margin = 50.0
+        let rangeX = (screenSize.width - 2 * margin) * 0.45
+        let rangeY = (screenSize.height - 2 * margin) * 0.45
+        // Lissajous curve: compound sinusoidal with two frequencies per axis
+        let lissX = sin(elapsed * t.freqX + t.phaseX) + t.ampRatio2 * sin(elapsed * t.freqX2 + t.phaseX * 1.7)
+        let lissY = sin(elapsed * t.freqY + t.phaseY) + t.ampRatio2 * sin(elapsed * t.freqY2 + t.phaseY * 0.8)
+        let normFactor = 1.0 + t.ampRatio2
+        let rawX = screenSize.width * 0.5 + (lissX / normFactor) * rangeX
+        let rawY = screenSize.height * 0.5 + (lissY / normFactor) * rangeY
         let x = min(max(rawX, margin), screenSize.width - margin)
         let y = min(max(rawY, margin), screenSize.height - margin)
         return CGPoint(x: x, y: y)
@@ -99,6 +109,7 @@ class TickViewModel {
         if let id = bestID, let t = ticks.first(where: { $0.id == id }) {
             let pos = position(for: t, at: time)
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            GameAudioManager.shared.playCatchSound("tick_catch")
             catchTick(id, position: pos, at: time)
         }
     }
@@ -185,6 +196,10 @@ struct TickGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("grass_loop")
+            }
+            .onDisappear {
+                GameAudioManager.shared.stopLoop("grass_loop")
             }
             .task(id: isPaused) {
                 while !Task.isCancelled {
