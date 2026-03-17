@@ -189,11 +189,14 @@ struct LadybugGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
+                GameAudioManager.shared.playLoop("ladybug_loop", volume: 0.15)
             }
+            .onDisappear { GameAudioManager.shared.stopLoop("ladybug_loop") }
             .task(id: isPaused) {
                 while !Task.isCancelled {
                     if !isPaused {
                         vm.update(at: Date.timeIntervalSinceReferenceDate)
+                        GameAudioManager.shared.playThrottled("ladybug_flap", volume: 0.28, minInterval: 0.8)
                     }
                     try? await Task.sleep(for: .milliseconds(16))
                 }
