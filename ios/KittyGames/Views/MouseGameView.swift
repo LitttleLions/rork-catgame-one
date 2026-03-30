@@ -28,7 +28,7 @@ class MouseViewModel {
         screenSize = size
         startTime = Date.timeIntervalSinceReferenceDate
         var built: [MouseBlueprint] = []
-        for i in 0..<4 {
+        for i in 0..<5 {
             let sx: Double = Double.random(in: 80...150) * (i % 2 == 0 ? 1.0 : -1.0)
             let sy: Double = Double.random(in: 60...110) * (i % 3 == 0 ? 1.0 : -1.0)
             let ox: Double = 0.2 * Double(size.width) + Double(i) * 0.18 * Double(size.width)
@@ -108,7 +108,6 @@ class MouseViewModel {
         if let id = bestID, let m = mice.first(where: { $0.id == id }) {
             let pos = position(for: m, at: time)
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            GameAudioManager.shared.playCatchSound("mouse_squeak")
             catchMouse(id, position: pos, at: time)
         }
     }
@@ -196,10 +195,6 @@ struct MouseGameView: View {
             .onAppear {
                 vm.setup(size: geo.size)
                 vm.update(at: Date.timeIntervalSinceReferenceDate)
-                GameAudioManager.shared.playLoop("floor_loop")
-            }
-            .onDisappear {
-                GameAudioManager.shared.stopLoop("floor_loop")
             }
             .task(id: isPaused) {
                 while !Task.isCancelled {
